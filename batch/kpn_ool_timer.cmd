@@ -1,0 +1,1 @@
+python ..\app.py C:\indroid\ini\indroid.ini C:\indroid\ini\kpn_ool_timer.ini

@@ -1,0 +1,1 @@
+python ..\app.py C:\indroid\ini\indroid.ini C:\indroid\ini\server_delayer.ini

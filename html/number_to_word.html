@@ -1,0 +1,127 @@
+
+<html>
+<head>
+
+  <script language="javascript">
+        var Eenheden = new Array ('nul', 'een', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen', 'tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien',  'zestien', 'zeventien', 'achttien', 'negentien' )
+        var Tientallen = new Array('<nietnodig>', '<nietnodig>', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig')
+
+        function KeyPreview(evt) {
+          var evt = (evt) ? evt : ((event) ? event : null);
+          var node = (evt.target) ? evt.target : ((evt.srcElement) ? evt.srcElement : null);
+          if ((evt.keyCode==13) && (node.id=="txtIntNum")) { Convert();}
+          return true
+        }
+        document.onkeydown = KeyPreview;
+
+        function Render(i, iEn, iHond) {
+          var s
+          // 0..19: enum
+          if( i<20 ) return Eenheden[i]
+          // 19..99: no eenheden when 0, always 'en' to connect (but 'ën' for 2 and 3)
+          if( i%10==0 ) { s="" } else { s=Eenheden[i%10]; if( i%10==2 || i%10==3 ) { s+=' en '} else {s+=' en '} }
+          if( i<100 ) return s + Tientallen[Math.floor(i/10)]
+          // 100..199: add 'en' as in iEn (for 2 see ANS page 290)
+          if( (iEn==3) || ((iEn==2) && (i%100<13)) ) { s="en " } else { s="" }
+          if( i%100==0) { s="" } else { s=" "+s+Render(i%100) } // only for 100
+          if( i<200 ) return "honderd" + s
+          // 199..999
+          if( iEn==3) { s="en " } else { s="" }
+          if( i%100==0) { s="" } else { s=" "+s+Render(i%100) }
+          if( i<1000 ) return Eenheden[Math.floor(i/100)] + "honderd" + s
+          // 1000..1099: add 'en' as in iEn (for 2 see ANS page 290)
+          if( (iEn==3) || ((iEn==2) && (i%1000<13)) ) { s="en " } else { s="" }
+          if( i%1000==0) { s="" } else { s=" "+s+Render(i%100) } // only for 1000
+          if( i<1100 ) return "duizend" + s
+          // 1100..9999
+          if( iHond==3) {
+            // 1100..1999
+            if( i<2000 ) return "duizend " + Render(i%1000,iEn)
+            // 2000..9999
+            if( i%1000==0 ) { s="" } else { s=" "+Render(i%1000,iEn) }
+            if( i<10000 ) return Eenheden[Math.floor(i/1000)] + "duizend" + s
+          } else {
+            if( iHond==1 ) { s="honderd" } else { s="" }
+            if( i%100==0 ) { s="honderd" } else { s=s+" "+Render(i%100) }
+            if( i<10000 ) return Render(Math.floor(i/100),iEn) + s
+          }
+          // 10 000 .. 999 999: add 'en' as in iEn (for 2 see ANS page 290)
+          if( i%1000==0 ) { s="" } else { s=" " + Render(i%1000,iEn) }
+          if( i<1000000 ) return Render(Math.floor(i/1000),iEn) + "duizend" + s
+          //
+          if( i%1000000==0 ) { s="" } else { s=" " + Render(i%1000000,iEn) }
+          if( i<1000000000 ) return Render(Math.floor(i/1000000),iEn) + " miljoen" + s
+          //
+          if( i%1000000000==0 ) { s="" } else { s=" " + Render(i%1000000000,iEn) }
+          if( i<1000000000000 ) return Render(Math.floor(i/1000000000),iEn) + " miljard" + s
+          //
+          return "te veel"
+        }
+
+        function Convert() {
+          var oIn=document.getElementById("txtIntNum")
+          var oOut=document.getElementById("txtStrNum")
+          var iEn= document.getElementById("rbnNooit").checked ? 1 : document.getElementById("rbnAns").checked ? 2 : 3
+          var iHond= document.getElementById("rbnHondvoud").checked ? 1 : document.getElementById("rbnJaartal").checked ? 2 : 3
+          var i=parseInt(oIn.value)
+          if( isNaN(i) ) i=0
+          oIn.value=i
+          oOut.value=Render(i, iEn, iHond )
+          FocusInput()
+        }
+
+        function FocusInput() {
+          document.getElementById("txtIntNum").focus()
+        }
+    </script>
+
+</head>
+<body onload="FocusInput()">
+
+  <div class="main-area">
+
+
+
+    <form class="block">
+      <table>
+        <tr>
+          <td>
+            <input id="txtIntNum" type="text" size="20"/>
+          </td>
+          <td align="right">
+           <input id="butConvert" type="button" value="Convert" onclick="Convert()">
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+           <input id="txtStrNum" type="text" size="80" readonly/>
+          </td>
+        </tr>
+        <tr valign="top">
+          <td>
+            'en' na 100 of 1000<br/>
+            <input id="rbnNooit"  type="radio" name="grpEn" value="Nooit"  onclick="Convert()"> Nooit <br>
+            <input id="rbnAns"    type="radio" name="grpEn" value="Ans"    onclick="Convert()"checked> tot 13 (ANS)<br>
+            <input id="rbnAltijd" type="radio" name="grpEn" value="Altijd" onclick="Convert()"> Altijd
+          </td>
+          <td>
+            1100..9999<br/>
+            <input id="rbnHondvoud" type="radio" name="grp1100" value="hondvoud" onclick="Convert()" checked> 100-voud<br>
+            <input id="rbnJaartal"  type="radio" name="grp1100" value="hondvoud" onclick="Convert()"> jaartal<br>
+            <input id="rbnDuizhond" type="radio" name="grp1100" value="duizhond" onclick="Convert()"> 1000/100<br>
+          </td>
+        </tr>
+      </table>
+    </form>
+
+
+  </div>
+
+  <div class="bar-area">
+
+
+    <br><br><br>
+  </div>
+
+</body>
+</html>
