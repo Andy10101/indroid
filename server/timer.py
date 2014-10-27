@@ -18,14 +18,14 @@ class Timer(Thread):
     def run(self):
         "Query the database for upcoming messages and put the appropriate message in the queue on the assigned time."
         while True:
-            db = DB(self.config.db.filename)
+            db = DB(self.config.db.connectionstring)
             mq = MQ(self.config.mq.host, self.config.mq.username, self.config.mq.password, 
                     self.config.mq.exchange, confirm_delivery=self.config.mq.confirm_delivery,
                     retry_path=self.config.mq.retry_path)
             try:
                 while True:
                     time_start = time.time()
-                    messages = db.resend_select(self.resend_interval)[:self.resend_interval* self.msgs_per_second]  # Limit resends to 30/second, max; gives a max rate of 100k/hour
+                    messages = db.resend_select(self.resend_interval)[:self.resend_interval * self.msgs_per_second]  # Limit resends to 30/second, max; gives a max rate of 100k/hour
                     print 'Resends next {} secs: {}'.format(self.resend_interval, len(messages)),
                     while messages:
                         timestamp, body = messages.pop(0)
@@ -37,7 +37,7 @@ class Timer(Thread):
                         kwargs = content['kwargs']
                         destination = kwargs['__properties__']['destination']
                         mq.send(destination, *args, **kwargs)
-                        db.remove(timestamp, body)
+                        db.resend_remove(timestamp, body)
                     # Now the resends (if any) are processed, wait until next period and start over:
                     if time.time() < time_start + self.resend_interval:
                         wait(self.resend_interval, 1)

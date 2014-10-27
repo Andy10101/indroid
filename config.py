@@ -1,4 +1,4 @@
-from ConfigParser import SafeConfigParser
+from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 from os import getcwd, walk, makedirs
 from os.path import defpath, expanduser, join, split, splitext
 from itertools import chain
@@ -43,6 +43,11 @@ class Config(object):
                 filelist.append(filename)
         self.filenames = self.config.read(filelist)
         self._decimal = self.get('format', 'decimal', '.')
+    def section(self, name):
+        try:
+            return self.config.items(name)
+        except NoSectionError:
+            return []
     def get(self, section, option, default=None):
         try:
             return self.config.get(section, option)
@@ -133,3 +138,19 @@ class Config(object):
     @property
     def decimal(self):
         return self._decimal
+
+def test(filename):
+    config = Config(filename)
+    s = config.get('client', 'retry_intervals', '60')
+    print s
+    retry_intervals = []
+    for num in s.split(','):
+        try:
+            secs = float(num)
+            retry_intervals.append(retry_intervals[-1] + secs if retry_intervals else secs)
+        except ValueError:
+            pass
+    return retry_intervals
+
+if __name__ == '__main__':
+    print test(r"C:\indroid\ini\indroid.ini")

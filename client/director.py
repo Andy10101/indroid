@@ -31,9 +31,9 @@ class Sender(Thread):
         self.confirm_delivery = config.mq.confirm_delivery
         self.retry_path = config.mq.retry_path
         self.counter = 0
-        if config.get('db', 'filename'):
+        if config.section('db'):
             from indroid.server.db import DB
-            self.db = DB(config.db.filename)
+            self.db = DB(config.db.connectionstring)
     def run(self):
         """Receive messages from connection. Unpack destination, args and kwargs 
         and send the """
@@ -78,7 +78,14 @@ class Receiver(Thread):
         self.confirm_delivery = config.mq.confirm_delivery
         self.retry_path = config.mq.retry_path
         self.send_interval = 1.0 / config.mq.msgs_per_second
-        self.counter = collections.Counter()
+        self.counter = collections.Counter()  # Just for console output
+        # Set up the intervals for these functions:
+        self.retry_intervals = []
+        for num in (self.config.get('client', 'retry_intervals', '60')).split(','):
+            try:
+                self.retry_intervals.append(float(num))
+            except ValueError:
+                pass
         conn1, conn2 = Pipe()
         functions = [name.strip() for name in config.client.functions.split(',')]
         self.connection_executor = conn1
@@ -96,7 +103,7 @@ class Receiver(Thread):
                 # Module imported; function exists:
                 self.funcname_by_key[getattr(module, function_name).routing_key] = name
             except:
-                # Function has no specific routing key. Use genneric key:
+                # Function has no specific routing key. Use generic key:
                 self.funcname_by_key[name] = name
     def run(self):
         # ToDo: interrupt the receiving process every x seconds, to reestablish the connection.
@@ -122,7 +129,7 @@ class Receiver(Thread):
         t1 = time.time()
         self.connection_sender.send((destination, args, kwargs))
         self.counter['sent'] += 1
-    def resend(self, destination, delay_or_timestamp, *args, **kwargs):
+    def resend(self, destination, *args, **kwargs):
         """Have the message resent to the specified destination after a certain delay or timestamp.
         The message must be sent to a queue which accepts it, stores it for later use and 
         retrieves/resends it if the time has passed."""
@@ -131,9 +138,16 @@ class Receiver(Thread):
         props = kwargs['__properties__']
         if 'destination' in props:
             if 'destination_old' not in props or props['destination_old'] != props['destination']:
-                props['destination_old'] = props['destination'] 
+                props['destination_old'] = props['destination']
         props['destination'] = destination
-        props['delay_or_timestamp'] = delay_or_timestamp
+        # Get the current resend-interval. If too many resends have passed already, log and stop trying:
+        sends = (len(props['sent']) if isinstance(props['sent'], list) else 1) if 'sent' in props else 0
+        if sends > len(self.retry_intervals):
+            getLogger(__name__).error('Too many retries ({}) for "{}"'.format\
+                                      (sends, yaml.dump({'args': args, 'kwargs': kwargs})))
+            # ToDo: process to dead-letter box!
+            return
+        props['delay_or_timestamp'] = self.retry_intervals[sends - 1 if sends else 0]
         srvr = self.config.mq.delay_handler
         #self.send(destination, *args, **kwargs)
         self.send(srvr, *args, **kwargs)
@@ -147,7 +161,9 @@ class Receiver(Thread):
         result = self.connection_executor.recv()
         return result
     def receive(self, ch, method, properties, body):
-        "Process a received message. ToDo: implement increasing delay when processing fails."
+        """Process a received message. ToDo: implement increasing delay when processing fails.
+        ToDo: The delay-schedule is fixed at the moment; MUST BE configurable.
+        Configuration accessible in self.config"""
         match_any = False
         for key, funcname in self.funcname_by_key.iteritems():
             # Set the key directly. Because it is a thread; the value might change in the meantime.
@@ -164,7 +180,7 @@ class Receiver(Thread):
                 # Now kick off a subprocess with the specified call and check for result. 
                 # If True, send ack; if not (or exception), resend it.
                 if not self.execute(funcname, *args, **kwargs):
-                    self.resend(destination, 20, *args, **kwargs)
+                    self.resend(destination, *args, **kwargs)
                 break
         #if not match_any:
             #ch.basic_reject(delivery_tag=method.delivery_tag)

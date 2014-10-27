@@ -65,7 +65,6 @@ class DB(object):
     def __repr__(self):
         return '<DB id:{} filename:"{}"'.format(id(self), self.filename)
     __str__ = __repr__
-    @reconnect_on_error
     def create_tables(self):
         for tbl, idx in (('CREATE TABLE resend (timestamp timestamp, message text);',
                           ('CREATE INDEX ON resend (timestamp);',

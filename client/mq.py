@@ -128,7 +128,7 @@ class MQ(object):
                                                         mandatory=True)
                 if delivered:
                     if not logged:
-                        getLogger(__name__).error('Message was delevered but not logged: "{}"'.format(payload_yaml))
+                        getLogger(__name__).error('Message was delivered but not logged: "{}"'.format(payload_yaml))
                     break
             except pika.exceptions.AMQPError as e:
                 getLogger(__name__).warning(e)

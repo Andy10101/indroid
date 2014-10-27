@@ -6,7 +6,7 @@ from monitor import monitor_process
 from order_entry import cleanup
 from indroid.client.director import Director
 import indroid.client.timer as ict
-import indroid.test
+#import indroid.test
 import os
 import sys
 import logging
@@ -57,7 +57,7 @@ class App(object):
         # Now set up a timer. The timer is used for pinging the MQ
         threads.append(ict.Timer(conf))
         # Finally,set up the server-timer if requested:
-        if conf.get('db', 'filename'):
+        if conf.section('db'):
             import indroid.server.timer as ist
             threads.append(ist.Timer(conf))
         for t in threads:
